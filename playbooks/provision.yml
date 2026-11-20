@@ -1,0 +1,57 @@
+---
+- name: 1. Configure Kea DHCP reservations
+  hosts: dhcp_servers
+  gather_facts: false
+  tags:
+    - dhcp
+    - network
+  vars:
+    kea_reservations: >-
+      {%- set res = [] -%}
+      {%- for vm in vms if vm.mac is defined and vm.ip is defined and vm.subnet is defined -%}
+        {%- set entry = {
+          'subnet': vm.subnet,
+          'hw_address': vm.mac,
+          'ip_address': vm.ip,
+          'hostname': vm.name
+        } -%}
+        {%- if vm.option_data is defined -%}
+          {%- set _ = entry.update({'option_data': vm.option_data}) -%}
+        {%- endif -%}
+        {%- set _ = res.append(entry) -%}
+      {%- endfor -%}
+      {{ res }}
+  roles:
+    - kea_reservations
+
+- name: 2. Update BIND9 forward and reverse DNS zones
+  hosts: dns_servers
+  gather_facts: false
+  tags:
+    - dns
+    - network
+  roles:
+    - bind9_zones
+
+- name: 3. Provision VMs in parallel on XCP-ng
+  hosts: provisioners
+  gather_facts: false
+  tags:
+    - vm
+    - compute
+  roles:
+    - newvm
+
+- name: 4. Verify connectivity to newly provisioned VMs
+  hosts: provisioned_vms:webservers:databases
+  gather_facts: true
+  tags:
+    - verify
+  tasks:
+    - name: Wait for SSH to become available
+      ansible.builtin.wait_for_connection:
+        timeout: 120
+
+    - name: Verify Ansible ping
+      ansible.builtin.ping:
+

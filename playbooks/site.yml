@@ -1,0 +1,8 @@
+---
+- name: Provision infrastructure (Kea DHCP, BIND9 DNS, and XCP-ng VMs)
+  ansible.builtin.import_playbook: provision.yml
+
+# Future Day-2 configuration playbooks can be imported right below:
+# - name: Configure webservers
+#   ansible.builtin.import_playbook: configure_webservers.yml
+

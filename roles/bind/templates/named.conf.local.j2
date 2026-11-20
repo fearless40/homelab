@@ -1,0 +1,19 @@
+// Managed by Ansible (bind9_zones role) - Do not edit manually
+
+zone "{{ bind_domain }}" {
+    type master;
+    file "{{ bind_forward_zone_file }}";
+    allow-transfer { {{ bind_allow_transfer }}; };
+    allow-update { {{ bind_allow_update }}; };
+};
+
+{% for rev in bind_reverse_zones %}
+zone "{{ rev.zone_name }}" {
+    type master;
+    file "{{ rev.file }}";
+    allow-transfer { {{ bind_allow_transfer }}; };
+    allow-update { {{ bind_allow_update }}; };
+};
+
+{% endfor %}
+

@@ -1,0 +1,25 @@
+{% set _serial = current_reverse_serial | default('2026111901') %}
+$TTL 3600
+@   IN  SOA {{ bind_ns_host }}. {{ bind_admin_email }}. (
+            {{ _serial }} ; Serial
+            3600       ; Refresh
+            900        ; Retry
+            604800     ; Expire
+            86400 )    ; Minimum TTL
+
+; Name Servers
+@   IN  NS  {{ bind_ns_host }}.
+
+; Static Infrastructure PTR Records
+{% for rec in bind_static_a_records if rec.ip.startswith(item.prefix ~ '.') %}
+{% set last_octet = rec.ip.split('.') %}
+{{ "%-8s" | format(last_octet) }} IN  PTR {{ rec.name if '.' in rec.name else rec.name ~ '.' ~ bind_domain }}.
+{% endfor %}
+
+; Provisioned VM PTR Records
+{% for vm in vms if vm.name is defined and vm.name | length > 0 and vm.ip is defined and vm.ip.startswith(item.prefix ~ '.') %}
+{% set last_octet = vm.ip.split('.') %}
+{% set fqdn = vm.name if '.' in vm.name else vm.name ~ '.' ~ bind_domain %}
+{{ "%-8s" | format(last_octet) }} IN  PTR {{ fqdn }}.
+{% endfor %}
+

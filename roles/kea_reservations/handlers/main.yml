@@ -1,0 +1,6 @@
+---
+- name: Reload kea-dhcp4
+  ansible.builtin.service:
+    name: "{{ kea_service_name }}"
+    state: reloaded
+

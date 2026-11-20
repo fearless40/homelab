@@ -1,0 +1,70 @@
+---
+- name: Ensure Kea reservations are updated in kea-dhcp4.conf
+  ansible.builtin.shell:
+    executable: /usr/bin/python3
+    cmd: |
+      import json
+      import sys
+
+      config_path = "{{ kea_config_path }}"
+      new_reservations = json.loads('''{{ kea_reservations | to_json }}''')
+
+      with open(config_path, "r", encoding="utf-8") as f:
+          config = json.load(f)
+
+      subnets = config.get("Dhcp4", {}).get("subnet4", [])
+      changed = False
+
+      for item in new_reservations:
+          target_subnet = item["subnet"]
+          mac = item["hw_address"].lower()
+          state = item.get("state", "present")
+
+          subnet_obj = next((s for s in subnets if s.get("subnet") == target_subnet), None)
+          if subnet_obj is None:
+              if state == "absent":
+                  continue
+              sys.stderr.write(f"Subnet {target_subnet} not found in {config_path}\n")
+              sys.exit(1)
+
+          reservations = subnet_obj.setdefault("reservations", [])
+          existing = next((r for r in reservations if r.get("hw-address", "").lower() == mac), None)
+
+          if state == "absent":
+              if existing is not None:
+                  reservations.remove(existing)
+                  changed = True
+              continue
+
+          desired = {"hw-address": mac, "ip-address": item["ip_address"]}
+          if item.get("hostname"):
+              desired["hostname"] = item["hostname"]
+          if item.get("option_data"):
+              desired["option-data"] = item["option_data"]
+
+          if existing is None:
+              reservations.append(desired)
+              changed = True
+          elif existing != desired:
+              existing.clear()
+              existing.update(desired)
+              changed = True
+
+      if changed:
+          with open(config_path, "w", encoding="utf-8") as f:
+              json.dump(config, f, indent=4)
+              f.write("\n")
+          print("CHANGED")
+      else:
+          print("OK")
+  register: kea_update
+  changed_when: "'CHANGED' in kea_update.stdout"
+  when: kea_reservations | length > 0
+  notify: Reload kea-dhcp4
+
+- name: Validate kea-dhcp4.conf syntax before reloading
+  ansible.builtin.command:
+    cmd: "kea-dhcp4 -t {{ kea_config_path }}"
+  changed_when: false
+  when: kea_update.changed
+

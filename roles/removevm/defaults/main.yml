@@ -1,0 +1,16 @@
+---
+# XCP-ng Connection Details
+xcpng_host: "192.168.1.50"
+xcpng_user: "root"
+xcpng_pass: "your_secure_password"
+xcpng_validate_certs: false
+
+# Parallel Execution & Safety Settings
+removevm_confirm: false
+removevm_force: true
+removevm_async_timeout: 600
+removevm_async_poll_delay: 5
+
+# List of VMs to remove (accepts the same 'vms' list format as newvm)
+vms: []
+

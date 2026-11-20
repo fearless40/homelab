@@ -1,0 +1,17 @@
+---
+kea_config_path: "/etc/kea/kea-dhcp4.conf"
+kea_service_name: "isc-kea-dhcp4-server" # Use 'kea-dhcp4-server' on RHEL/Fedora
+
+# Expected format:
+# kea_reservations:
+#   - subnet: "192.168.1.0/24"
+#     hw_address: "00:16:3e:10:01:02"
+#     ip_address: "192.168.1.102"
+#     hostname: "web-02"
+#     option_data:
+#       - name: "routers"
+#         data: "192.168.1.1"
+#       - name: "domain-name-servers"
+#         data: "1.1.1.1, 8.8.8.8"
+kea_reservations: []
+

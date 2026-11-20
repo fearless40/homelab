@@ -1,0 +1,41 @@
+# Ansible core & retry files
+*.retry
+.ansible/
+
+# Vault passwords & unencrypted secrets
+.vault_pass
+vault_pass.txt
+*vault*.secret
+vault/*
+
+
+# Local cache & facts
+.cache/
+facts_cache/
+*.fact
+
+# Downloaded Galaxy roles & collections (if managed via requirements.yml)
+# roles/*
+# !roles/requirements.yml
+# collections/
+
+# Molecule & testing artifacts
+.molecule/
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage
+
+# Python virtual environments & bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs & temporary files
+*.log
+*.swp
+*~
+.DS_Store
+ignore 

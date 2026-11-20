@@ -1,0 +1,9 @@
+- name: Check Connectivity to all hosts
+  remote_user: ansible
+  hosts: all
+  become: true
+  gather_facts: true  # No need to gather facts for a simple ping
+  tasks:
+- name: Test Ansible connection
+    ansible.builtin.ping:
+

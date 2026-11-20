@@ -1,0 +1,55 @@
+---
+- name: Start parallel VM provisioning jobs on XCP-ng
+  community.general.xenserver_guest:
+    hostname: "{{ xcpng_host }}"
+    username: "{{ xcpng_user }}"
+    password: "{{ xcpng_pass }}"
+    validate_certs: "{{ xcpng_validate_certs }}"
+    name: "{{ item.name }}"
+    template: "{{ item.template | default(vm_default_template) }}"
+    linked_clone: "{{ item.linked_clone | default(vm_default_linked_clone) }}"
+    state: "{{ item.state | default(vm_default_state) }}"
+    hardware:
+      num_cpus: "{{ item.cpus | default(vm_default_cpus) }}"
+      num_cpu_cores_per_socket: "{{ item.cores_per_socket | default(vm_default_cores_per_socket) }}"
+      memory_mb: "{{ item.memory_mb | default(vm_default_memory_mb) }}"
+    disks:
+      - size_gb: "{{ item.disk_size_gb | default(vm_default_disk_size_gb) }}"
+        sr: "{{ item.storage_repo | default(vm_default_storage_repo) }}"
+    networks:
+      - "{{ {'name': item.network | default(vm_default_network), 'type': 'dhcp'} | combine(
+          {'mac': item.mac} if item.mac is defined else {}
+        ) }}"
+    wait_for_ip_address: "{{ item.wait_for_ip | default(vm_default_wait_for_ip) }}"
+  loop: "{{ vms }}"
+  loop_control:
+    label: "{{ item.name }}"
+  async: "{{ vm_async_timeout }}"
+  poll: 0
+  register: vm_jobs
+  delegate_to: localhost
+
+- name: Wait for all parallel VM jobs to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ vm_jobs.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  register: vm_results
+  until: vm_results.finished
+  retries: "{{ (vm_async_timeout / vm_async_poll_delay) | int }}"
+  delay: "{{ vm_async_poll_delay }}"
+  delegate_to: localhost
+
+- name: Add newly provisioned VMs to in-memory inventory
+  ansible.builtin.add_host:
+    name: "{{ item.instance.name }}"
+    ansible_host: "{{ item.instance.ipv4 }}"
+    groups: "{{ item.item.item.group | default('provisioned_vms') }}"
+  loop: "{{ vm_results.results }}"
+  loop_control:
+    label: "{{ item.item.item.name }}"
+  when:
+    - item.instance is defined
+    - item.instance.ipv4 is defined
+

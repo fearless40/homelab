@@ -1,0 +1,18 @@
+kea_dhcp4_interfaces:
+  - eth0
+
+kea_dhcp4_dns_servers:
+  - 10.0.10.2
+  - 10.0.10.3
+
+kea_dhcp4_domain_search:
+  - corp.example.com
+
+# Define your subnets and their dynamic assignment pools
+kea_dhcp4_subnets_definition:
+  - id: 10
+    subnet: "10.0.10.0/24"
+    gateway: "10.0.10.1"
+    pools:
+      - "10.0.10.100 - 10.0.10.250"
+

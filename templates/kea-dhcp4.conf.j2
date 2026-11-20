@@ -1,0 +1,73 @@
+{
+  "Dhcp4": {
+    "interfaces-config": {
+      "interfaces": {{ kea_dhcp4_interfaces | to_json }}
+    },
+    "control-socket": {
+      "socket-type": "unix",
+      "socket-name": "{{ kea_dhcp4_control_socket | default('/run/kea/kea4-ctrl-socket') }}"
+    },
+    "lease-database": {
+      "type": "{{ kea_dhcp4_lease_db.type | default('memfile') }}",
+      "persist": {{ kea_dhcp4_lease_db.persist | default(true) | to_json }},
+      "name": "{{ kea_dhcp4_lease_db.name | default('/var/lib/kea/kea-leases4.csv') }}"
+    },
+    "option-data": [
+      {
+        "name": "domain-name-servers",
+        "data": "{{ kea_dhcp4_dns_servers | join(', ') }}"
+      },
+      {
+        "name": "domain-search",
+        "data": "{{ kea_dhcp4_domain_search | join(', ') }}"
+      }
+    ],
+    "subnet4": [
+{% for subnet in kea_dhcp4_subnets_definition %}
+      {
+        "id": {{ subnet.id }},
+        "subnet": "{{ subnet.subnet }}",
+        "pools": [
+{% for pool in subnet.pools %}
+          {
+            "pool": "{{ pool }}"
+          }{{ "," if not loop.last else "" }}
+{% endfor %}
+        ],
+        "option-data": [
+          {
+            "name": "routers",
+            "data": "{{ subnet.gateway }}"
+          }
+        ],
+        "reservations": [
+{% set subnet_clients = [] %}
+{% for client in groups['dhcp_clients'] %}
+  {% if hostvars[client].subnet_id == subnet.id %}
+    {% set _ = subnet_clients.append(client) %}
+  {% endif %}
+{% endfor %}
+{% for client in subnet_clients %}
+          {
+            "hw-address": "{{ hostvars[client].mac_address }}",
+            "ip-address": "{{ hostvars[client].ansible_host }}",
+            "hostname": "{{ client }}"
+          }{{ "," if not loop.last else "" }}
+{% endfor %}
+        ]
+      }{{ "," if not loop.last else "" }}
+{% endfor %}
+    ],
+    "loggers": [
+      {
+        "name": "kea-dhcp4",
+        "output_options": [
+          {
+            "output": "{{ kea_dhcp4_log_output | default('/var/log/kea/kea-dhcp4.log') }}"
+          }
+        ],
+        "severity": "INFO"
+      }
+    ]
+  }
+}

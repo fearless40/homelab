@@ -1,0 +1,47 @@
+---
+- name: 1. Destroy VMs in parallel on XCP-ng
+  hosts: provisioners
+  gather_facts: false
+  tags:
+    - vm
+    - compute
+  roles:
+    - removevm
+
+- name: 2. Remove Kea DHCP reservations for destroyed VMs
+  hosts: dhcp_servers
+  gather_facts: false
+  tags:
+    - dhcp
+    - network
+  vars:
+    _target_vms: >-
+      {{ vms | selectattr('name', 'equalto', target_vm) | list
+         if target_vm is defined and target_vm | length > 0 else vms }}
+    kea_reservations: >-
+      {%- set res = [] -%}
+      {%- for vm in _target_vms if vm.mac is defined and vm.subnet is defined -%}
+        {%- set _ = res.append({
+          'subnet': vm.subnet,
+          'hw_address': vm.mac,
+          'state': 'absent'
+        }) -%}
+      {%- endfor -%}
+      {{ res }}
+  roles:
+    - kea_reservations
+
+- name: 3. Purge destroyed VMs from BIND9 DNS zones
+  hosts: dns_servers
+  gather_facts: false
+  tags:
+    - dns
+    - network
+  vars:
+    _target_names: >-
+      {{ [target_vm] if target_vm is defined and target_vm | length > 0
+         else (vms | map(attribute='name') | list) }}
+    vms: "{{ hostvars['localhost']['vms'] | rejectattr('name', 'in', _target_names) | list }}"
+  roles:
+    - bind9_zones
+

@@ -1,0 +1,37 @@
+- hosts: development
+  become: true
+  tasks:
+    - name: Change the system hostname to match inventory name
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+      # Only run if the current FQDN doesn't already match the inventory name
+      when: ansible_fqdn != inventory_hostname
+
+    - name: Update /etc/hosts file with new hostname and IP
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "^{{ ansible_default_ipv4.address }}"
+        line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }} {{ inventory_hostname_short }}"
+        state: present
+      # Only run if the FQDN doesn't match, indicating a change is needed
+      when: ansible_fqdn != inventory_hostname
+
+    - name: Reboot the machine to apply changes
+      ansible.builtin.command: shutdown -r now "Ansible updates triggered"
+      # Use async and poll 0 to fire and forget the reboot command
+      async: 0
+      poll: 0
+      ignore_errors: true # Ignore errors because the connection will be lost
+      register: reboot_initiated
+      when: ansible_fqdn != inventory_hostname # Optional: only reboot if a change was made
+
+    - name: Wait for the server to come back up
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 22 # or your SSH port
+        state: started
+        delay: 30
+        timeout: 300
+      delegate_to: localhost
+      when: reboot_initiated is defined and reboot_initiated.changed
+

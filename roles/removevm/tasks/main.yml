@@ -1,0 +1,46 @@
+---
+- name: Abort unless removevm_confirm is explicitly set to true
+  ansible.builtin.assert:
+    that:
+      - removevm_confirm | bool
+    fail_msg: >
+      Safety check failed! Pass '-e removevm_confirm=true' (and optionally
+      '-e target_vm=vm-name' to remove a single VM).
+  delegate_to: localhost
+  run_once: true
+
+- name: Determine list of VMs to destroy
+  ansible.builtin.set_fact:
+    _vms_to_remove: >-
+      {{ vms | selectattr('name', 'equalto', target_vm) | list
+         if target_vm is defined and target_vm | length > 0 else vms }}
+
+- name: Force shutdown and remove VMs in parallel on XCP-ng
+  community.general.xenserver_guest:
+    hostname: "{{ xcpng_host }}"
+    username: "{{ xcpng_user }}"
+    password: "{{ xcpng_pass }}"
+    validate_certs: "{{ xcpng_validate_certs }}"
+    name: "{{ item.name }}"
+    state: absent
+    force: "{{ item.force | default(removevm_force) }}"
+  loop: "{{ _vms_to_remove }}"
+  loop_control:
+    label: "{{ item.name }}"
+  async: "{{ removevm_async_timeout }}"
+  poll: 0
+  register: destroy_jobs
+  delegate_to: localhost
+
+- name: Wait for all parallel VM deletions to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ destroy_jobs.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  register: destroy_results
+  until: destroy_results.finished
+  retries: "{{ (removevm_async_timeout / removevm_async_poll_delay) | int }}"
+  delay: "{{ removevm_async_poll_delay }}"
+  delegate_to: localhost
+

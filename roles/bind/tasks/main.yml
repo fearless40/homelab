@@ -1,0 +1,92 @@
+---
+- name: Ensure BIND zones directory exists
+  ansible.builtin.file:
+    path: "{{ bind_zones_dir }}"
+    state: directory
+    owner: "{{ bind_user }}"
+    group: "{{ bind_group }}"
+    mode: "0755"
+
+# --- FORWARD ZONE (IDEMPOTENT SERIAL) ---
+- name: Check if forward zone file already exists
+  ansible.builtin.stat:
+    path: "{{ bind_forward_zone_file }}"
+  register: forward_zone_stat
+
+- name: Read existing forward zone file to extract current serial
+  ansible.builtin.slurp:
+    src: "{{ bind_forward_zone_file }}"
+  register: forward_zone_raw
+  when: forward_zone_stat.stat.exists
+
+- name: Set current forward serial fact
+  ansible.builtin.set_fact:
+    current_forward_serial: >-
+      {{ (forward_zone_raw.content | b64decode | regex_search('(\d+)\s*;\s*Serial', '\1') | first)
+         if forward_zone_stat.stat.exists else '2026111901' }}
+
+- name: Dry-run forward zone render to detect record changes
+  ansible.builtin.template:
+    src: forward.zone.j2
+    dest: "{{ bind_forward_zone_file }}"
+  check_mode: true
+  register: forward_zone_diff
+
+- name: Increment forward serial only if zone changed
+  ansible.builtin.set_fact:
+    current_forward_serial: "{{ (current_forward_serial | int) + 1 }}"
+  when:
+    - forward_zone_stat.stat.exists
+    - forward_zone_diff.changed
+
+- name: Write forward DNS zone file ({{ bind_domain }})
+  ansible.builtin.template:
+    src: forward.zone.j2
+    dest: "{{ bind_forward_zone_file }}"
+    owner: "{{ bind_user }}"
+    group: "{{ bind_group }}"
+    mode: "0644"
+    validate: "named-checkzone {{ bind_domain }} %s"
+  when: forward_zone_diff.changed
+  notify: Reload bind9
+
+# --- REVERSE ZONES (IDEMPOTENT SERIAL PER ZONE) ---
+- name: Check if reverse zone files already exist
+  ansible.builtin.stat:
+    path: "{{ item.file }}"
+  loop: "{{ bind_reverse_zones }}"
+  loop_control:
+    label: "{{ item.zone_name }}"
+  register: reverse_zone_stats
+
+- name: Read existing reverse zone files
+  ansible.builtin.slurp:
+    src: "{{ item.item.file }}"
+  loop: "{{ reverse_zone_stats.results }}"
+  loop_control:
+    label: "{{ item.item.zone_name }}"
+  when: item.stat.exists
+  register: reverse_zone_raws
+
+- name: Render reverse DNS zone files with idempotent serials
+  ansible.builtin.include_tasks: update_reverse_zone.yml
+  loop: "{{ bind_reverse_zones }}"
+  loop_control:
+    index_var: rev_idx
+    label: "{{ item.zone_name }}"
+
+# --- NAMED.CONF.LOCAL & VALIDATION ---
+- name: Render named.conf.local zone declarations
+  ansible.builtin.template:
+    src: named.conf.local.j2
+    dest: "{{ bind_conf_local_file }}"
+    owner: root
+    group: "{{ bind_group }}"
+    mode: "0644"
+  notify: Reload bind9
+
+- name: Validate full BIND9 configuration and all loaded zones
+  ansible.builtin.command:
+    cmd: "named-checkconf -z"
+  changed_when: false
+

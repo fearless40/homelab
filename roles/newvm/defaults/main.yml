@@ -1,0 +1,26 @@
+---
+# XCP-ng Connection Details
+xcpng_host: "192.168.1.50"
+xcpng_user: "root"
+xcpng_pass: "your_secure_password"
+xcpng_validate_certs: false
+
+# Default Fallback VM Specifications
+vm_default_template: "Ubuntu-24.04-Template"
+vm_default_linked_clone: true
+vm_default_state: "poweredon"
+vm_default_cpus: 2
+vm_default_cores_per_socket: 1
+vm_default_memory_mb: 4096
+vm_default_disk_size_gb: 30
+vm_default_storage_repo: "Local storage"
+vm_default_network: "Pool-wide network associated with eth0"
+vm_default_wait_for_ip: true
+
+# Parallel Execution Settings
+vm_async_timeout: 600
+vm_async_poll_delay: 5
+
+# List of VMs to provision
+vms: []
+

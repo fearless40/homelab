@@ -1,0 +1,10 @@
+development:
+  hosts:
+    # kea-dhcp:
+      # ansible_host: 10.10.10.138
+    test-vm:
+      ansible_host: 10.10.20.145
+  vars:
+    ansible_ssh_user: ansible
+
+

@@ -1,0 +1,22 @@
+---
+- name: Configure Kea DHCP Server
+  hosts: dhcp_servers
+  become: true # Ensures tasks run with sudo privileges on the remote VM
+  vars_files:
+    - group_vars/dhcp_servers.yml
+  tasks:
+    - name: Deploy Kea DHCPv4 configuration
+      ansible.builtin.template:
+        src: templates/kea-dhcp4.conf.j2
+        dest: /etc/kea/kea-dhcp4.conf
+        owner: _kea
+        group: _kea
+        mode: "0640"
+      notify: Restart kea-dhcp4
+
+  handlers:
+    - name: Restart kea-dhcp4
+      ansible.builtin.systemd:
+        name: isc-kea-dhcp4-server
+        state: restarted
+        enabled: true

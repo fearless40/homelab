@@ -1,0 +1,36 @@
+---
+bind_service_name: "named"                # Use 'bind9' on older Debian/Ubuntu if applicable
+bind_conf_local_file: "/etc/bind/named.conf.local" # Use '/etc/named.rfc1912.zones' on RHEL/Rocky
+bind_zones_dir: "/etc/bind/zones"         # Use '/var/named' on RHEL/Rocky/Alma
+bind_user: "bind"                         # Use 'named' on RHEL/Rocky/Alma
+bind_group: "bind"                        # Use 'named' on RHEL/Rocky/Alma
+
+# Zone Transfer & Dynamic Update Policies
+bind_allow_transfer: "none"               # Or semicolon-separated IPs: "192.168.1.3;"
+bind_allow_update: "none"
+
+# Forward Zone Configuration
+bind_domain: "example.local"
+bind_ns_host: "ns1.example.local"
+bind_admin_email: "admin.example.local"   # Use '.' instead of '@' for BIND SOA format
+bind_forward_zone_file: "{{ bind_zones_dir }}/db.{{ bind_domain }}"
+
+# Reverse Zones to Generate (supports multiple subnets)
+bind_reverse_zones:
+  - prefix: "192.168.1"
+    zone_name: "1.168.192.in-addr.arpa"
+    file: "{{ bind_zones_dir }}/db.192.168.1"
+  - prefix: "10.10.20"
+    zone_name: "20.10.10.in-addr.arpa"
+    file: "{{ bind_zones_dir }}/db.10.10.20"
+
+# Static infrastructure records (NS, gateway, XCP-ng host, etc.)
+bind_static_a_records:
+  - name: "ns1"
+    ip: "192.168.1.2"
+  - name: "xcpng-01"
+    ip: "192.168.1.50"
+
+# VM list from inventory/hosts.yml
+vms: []
+

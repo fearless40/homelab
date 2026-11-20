@@ -1,0 +1,52 @@
+---
+- name: Provision VMs on XCP-ng
+  hosts: provisioners
+  gather_facts: false
+  roles:
+    - newvm
+
+- name: Configure newly provisioned webservers
+  hosts: webservers
+  gather_facts: true
+  tasks:
+    - name: Verify SSH connectivity to new VMs
+      ansible.builtin.ping:
+
+
+- name: Configure Kea DHCP reservations
+  hosts: dhcp_servers
+  gather_facts: false
+  vars:
+    kea_reservations: >-
+      {%- set res = [] -%}
+      {%- for vm in vms if vm.mac is defined and vm.ip is defined and vm.subnet is defined -%}
+        {%- set _ = res.append({
+          'subnet': vm.subnet,
+          'hw_address': vm.mac,
+          'ip_address': vm.ip,
+          'hostname': vm.name
+        }) -%}
+      {%- endfor -%}
+      {{ res }}
+  roles:
+    - kea_reservations
+
+- name: Provision VMs in parallel on XCP-ng
+  hosts: provisioners
+  gather_facts: false
+  roles:
+    - newvm
+
+- name: Configure newly provisioned VMs
+  hosts: provisioned_vms:webservers:databases
+  gather_facts: true
+  tasks:
+    - name: Verify SSH connectivity
+      ansible.builtin.ping:
+
+- name: Update BIND9 forward and reverse DNS zones
+  hosts: dns_servers
+  gather_facts: false
+  roles:
+    - bind_zones
+

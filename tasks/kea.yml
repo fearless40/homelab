@@ -1,0 +1,9 @@
+- name: Deploy Kea DHCPv4 configuration
+  ansible.builtin.template:
+    src: kea-dhcp4.conf.j2
+    dest: /etc/kea/kea-dhcp4.conf
+    owner: _kea
+    group: _kea
+    mode: "0640"
+    validate: "/usr/sbin/kea-dhcp4 -t %s"
+  notify: Restart kea-dhcp4

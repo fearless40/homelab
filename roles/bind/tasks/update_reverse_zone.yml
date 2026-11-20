@@ -1,0 +1,33 @@
+---
+- name: Extract current serial for {{ item.zone_name }}
+  ansible.builtin.set_fact:
+    _rev_exists: "{{ reverse_zone_stats.results[rev_idx].stat.exists }}"
+    current_reverse_serial: >-
+      {{ (reverse_zone_raws.results[rev_idx].content | b64decode | regex_search('(\d+)\s*;\s*Serial', '\1') | first)
+         if reverse_zone_stats.results[rev_idx].stat.exists else '2026111901' }}
+
+- name: Dry-run reverse zone render for {{ item.zone_name }}
+  ansible.builtin.template:
+    src: reverse.zone.j2
+    dest: "{{ item.file }}"
+  check_mode: true
+  register: _rev_diff
+
+- name: Increment serial for {{ item.zone_name }} only if changed
+  ansible.builtin.set_fact:
+    current_reverse_serial: "{{ (current_reverse_serial | int) + 1 }}"
+  when:
+    - _rev_exists | bool
+    - _rev_diff.changed
+
+- name: Write reverse DNS zone file for {{ item.zone_name }}
+  ansible.builtin.template:
+    src: reverse.zone.j2
+    dest: "{{ item.file }}"
+    owner: "{{ bind_user }}"
+    group: "{{ bind_group }}"
+    mode: "0644"
+    validate: "named-checkzone {{ item.zone_name }} %s"
+  when: _rev_diff.changed
+  notify: Reload bind9
+

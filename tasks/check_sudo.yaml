@@ -1,0 +1,19 @@
+- name: Check if sudo works
+  hosts: all
+  become: false # Start without privilege escalation for initial connection
+  gather_facts: false # Optional: speeds up the test
+
+  tasks:
+    - name: Attempt to run a command with sudo and check the result
+      ansible.builtin.command: id -u
+      register: id_output
+      become: true # Attempt privilege escalation for this specific task
+      changed_when: false # This task is a check, not a change
+      
+    - name: Assert that the command ran as root (UID 0)
+      ansible.builtin.assert:
+        that:
+          - id_output.stdout == "0"
+        fail_msg: "Failed to obtain root privileges via sudo on this host."
+        success_msg: "Successfully obtained root privileges via sudo on this host."
+
