@@ -27,7 +27,7 @@
               sys.exit(1)
 
           reservations = subnet_obj.setdefault("reservations", [])
-          existing = next((r for r in reservations if r.get("hw-address", "").lower() == mac), None)
+          existing = next((r for r in reservations if r.get("hw_address", "").lower() == mac), None)
 
           if state == "absent":
               if existing is not None:
@@ -56,7 +56,8 @@
           print("CHANGED")
       else:
           print("OK")
-  delegate_to: "{{ kea_target_host | default(inventory_hostname) }}"
+  delegate_to: localhost
+  # "{{ kea_target_host | default(inventory_hostname) }}"
   become: true
   register: kea_update
   changed_when: "'CHANGED' in kea_update.stdout"
