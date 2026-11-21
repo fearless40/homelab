@@ -15,3 +15,7 @@ ansible-playbook teardown.yml -e removevm_confirm=true -e target_vm=web-02
 ansible-inventory --graph
 
 (Security Note: Make sure your project directory is not world-writable, as Ansible intentionally ignores ansible.cfg inside world-writable directories (777) to prevent untrusted configuration injection.)
+
+
+Deploy software to a specific host only
+ansible-playbook -i hosts.yml -i apps_inventory.yml deploy_app.yml --limit media-vm

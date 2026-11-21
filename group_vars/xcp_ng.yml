@@ -1,0 +1,16 @@
+# XCP-NG network dictionary
+xcp_ng_networks:
+  WAN: "a53d9832-4cda-f0b7-9d90-1b4af2a0571a"
+  server: "b53d2c07-28e8-aba2-45e4-1e6321adea88"
+  iot: "29cf88d8-5fa7-b48f-46ad-894fdd846bce"
+  not: "c205cbd0-4f26-ce83-b960-a9b91162d817"
+  users: "3377ca7f-55b2-720e-a43e-e6b1499299f7"
+
+
+# XCP-ng Connection Details
+xcpng_host: "10.10.10.30"
+xcpng_user: "{{vault_xcpng_login}}"
+xcpng_pass: "{{valut_xcpng_pass}}"
+xcpng_validate_certs: false
+
+

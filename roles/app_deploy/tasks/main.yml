@@ -1,0 +1,28 @@
+---
+- name: Ensure stack directories exist
+  ansible.builtin.file:
+    path: "{{ app_base_dir }}/{{ item.name }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ app_stacks }}"
+  when: app_stacks | length > 0
+  become: true
+
+- name: Render Compose file per stack
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ app_base_dir }}/{{ item.name }}/compose.yml"
+    mode: "0644"
+  loop: "{{ app_stacks }}"
+  when: app_stacks | length > 0
+  become: true
+  register: compose_rendered
+
+- name: Start or update Docker Compose stacks
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_base_dir }}/{{ item.name }}"
+    state: present
+    pull: missing
+  loop: "{{ app_stacks }}"
+  when: app_stacks | length > 0
+  become: true

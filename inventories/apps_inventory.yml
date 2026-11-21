@@ -1,0 +1,20 @@
+---
+all:
+  children:
+    app_hosts:
+      hosts:
+        media-vm:
+          app_base_dir: /opt/stacks
+          app_stacks:
+            - name: syncthing
+              image: lscr.io/linuxserver/syncthing:latest
+              ports:
+                - "8384:8384"
+                - "22000:22000/tcp"
+              environment:
+                PUID: "1000"
+                PGID: "1000"
+                TZ: "America/Los_Angeles"
+              volumes:
+                - "/opt/stacks/syncthing/config:/config"
+                - "/srv/shared:/data"

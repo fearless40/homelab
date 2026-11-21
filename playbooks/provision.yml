@@ -31,7 +31,7 @@
     - dns
     - network
   roles:
-    - bind9_zones
+    - bind
 
 - name: 3. Provision VMs in parallel on XCP-ng
   hosts: provisioners

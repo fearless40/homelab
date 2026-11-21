@@ -1,0 +1,7 @@
+---
+- name: Deploy software stacks to target VM
+  hosts: "{{ target_vm | default('app_hosts') }}"
+  gather_facts: true
+  roles:
+    - role: app_deploy
+      tags: ["app_deploy"]

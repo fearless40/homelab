@@ -1,6 +1,6 @@
----
 - name: Reload kea-dhcp4
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: "{{ kea_service_name }}"
-    state: reloaded
-
+    state: restarted / reloaded
+  delegate_to: "{{ kea_target_host | default(inventory_hostname) }}"
+  become: true

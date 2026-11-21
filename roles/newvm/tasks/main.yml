@@ -16,11 +16,31 @@
     disks:
       - size_gb: "{{ item.disk_size_gb | default(vm_default_disk_size_gb) }}"
         sr: "{{ item.storage_repo | default(vm_default_storage_repo) }}"
-    networks:
-      - "{{ {'name': item.network | default(vm_default_network), 'type': 'dhcp'} | combine(
-          {'mac': item.mac} if item.mac is defined else {}
-        ) }}"
+    networks: "{{ resolved_nics }}"
     wait_for_ip_address: "{{ item.wait_for_ip | default(vm_default_wait_for_ip) }}"
+  vars:
+    raw_nics: >-
+      {{
+        item.interfaces
+        if (item.interfaces is defined and item.interfaces | length > 0)
+        else [{
+          'network': item.network | default(vm_default_network),
+          'mac': item.mac | default(omit)
+        }]
+      }}
+    resolved_nics: "{{ _nic_acc | default([]) }}"
+    _nic_acc: >-
+      {%- set out = [] -%}
+      {%- for nic in raw_nics -%}
+        {%- set net_key = nic.network -%}
+        {%- set net_val = (xcp_ng_networks[net_key] if (xcp_ng_networks is defined and net_key in xcp_ng_networks) else net_key) -%}
+        {%- set entry = {'name': net_val, 'type': 'dhcp'} -%}
+        {%- if nic.mac is defined -%}
+          {%- set _ = entry.update({'mac': nic.mac}) -%}
+        {%- endif -%}
+        {%- set _ = out.append(entry) -%}
+      {%- endfor -%}
+      {{ out }}
   loop: "{{ vms }}"
   loop_control:
     label: "{{ item.name }}"
@@ -37,7 +57,7 @@
     label: "{{ item.item.name }}"
   register: vm_results
   until: vm_results.finished
-  retries: "{{ (vm_async_timeout / vm_async_poll_delay) | int }}"
+  retries: "{{ ((vm_async_timeout | int) / (vm_async_poll_delay | int)) | int + 1 }}"
   delay: "{{ vm_async_poll_delay }}"
   delegate_to: localhost
 
@@ -45,11 +65,12 @@
   ansible.builtin.add_host:
     name: "{{ item.instance.name }}"
     ansible_host: "{{ item.instance.ipv4 }}"
-    groups: "{{ item.item.item.group | default('provisioned_vms') }}"
+    groups:
+      - "{{ item.item.item.group | default('provisioned_vms') }}"
   loop: "{{ vm_results.results }}"
   loop_control:
     label: "{{ item.item.item.name }}"
   when:
     - item.instance is defined
     - item.instance.ipv4 is defined
-
+    - item.instance.ipv4 | length > 0

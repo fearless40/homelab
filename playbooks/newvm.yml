@@ -48,5 +48,5 @@
   hosts: dns_servers
   gather_facts: false
   roles:
-    - bind_zones
+    - bind
 

@@ -1,0 +1,25 @@
+services:
+{% for stack in app_stacks %}
+  {{ stack.name }}:
+    image: {{ stack.image }}
+    container_name: {{ stack.name }}
+    restart: unless-stopped
+{% if stack.ports is defined and stack.ports | length > 0 %}
+    ports:
+{% for port in stack.ports %}
+      - "{{ port }}"
+{% endfor %}
+{% endif %}
+{% if stack.environment is defined and stack.environment | length > 0 %}
+    environment:
+{% for k, v in stack.environment.items() %}
+      {{ k }}: "{{ v }}"
+{% endfor %}
+{% endif %}
+{% if stack.volumes is defined and stack.volumes | length > 0 %}
+    volumes:
+{% for vol in stack.volumes %}
+      - "{{ vol }}"
+{% endfor %}
+{% endif %}
+{% endfor %}
